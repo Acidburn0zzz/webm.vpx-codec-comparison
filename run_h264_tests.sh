@@ -50,9 +50,11 @@ do
   for (( rate=rate_start; rate<=rate_end; rate+=rate_step ))
   do
     # Encode into ./<clip_name>_<width>_<height>_<frame_rate>_<rate>kbps.yuv
-    x264 --vbv-bufsize ${rate} --bitrate ${rate} --fps ${frame_rate} \
+    x264 --nal-hrd cbr --vbv-maxrate ${rate} --vbv-bufsize ${rate} \
+      --vbv-init 0.8 --bitrate ${rate} --fps ${frame_rate} \
       --profile baseline --no-scenecut --keyint infinite --preset veryslow \
       --input-res ${width}x${height} \
+      --tune psnr \
       -o ./encoded_clips/h264/${clip_stem}_${rate}kbps.mkv ${filename} \
       2> ./logs/h264/${clip_stem}_${rate}kbps.txt
 

@@ -53,11 +53,11 @@ do
     #  ./<clip_name>_<width>_<height>_<frame_rate>_<rate>kbps.yuv
     # Data-rate & PSNR will be output to the file "opsnr.stt"
     ./bin/vpxenc --lag-in-frames=0 --target-bitrate=${rate} --kf-min-dist=3000 \
-      --kf-max-dist=3000 --cpu-used=-1 --fps=${frame_rate}/1 --static-thresh=1 \
+      --kf-max-dist=3000 --cpu-used=0 --fps=${frame_rate}/1 --static-thresh=0 \
       --token-parts=1 --drop-frame=0 --end-usage=cbr --min-q=2 --max-q=56 \
       --undershoot-pct=100 --overshoot-pct=15 --buf-sz=1000 \
-      --buf-initial-sz=5000 --buf-optimal-sz=600 --max-intra-rate=1200 \
-      --resize-allowed=0 --drop-frame=0 --passes=1 --rt --noise-sensitivity=0 \
+      --buf-initial-sz=800 --buf-optimal-sz=1000 --max-intra-rate=1200 \
+      --resize-allowed=0 --drop-frame=0 --passes=1 --good --noise-sensitivity=0 \
       -w ${width} -h ${height} ${filename} --codec=vp8 \
       -o ./encoded_clips/vp8/${clip_stem}_${rate}kbps.webm \
       &>./logs/vp8/${clip_stem}_${rate}kbps.txt
@@ -71,8 +71,8 @@ do
     psnr=$(./bin/psnr ${filename} temp.yuv ${width} ${height} 9999)
 
     # Rename the file to reflect the encoded datarate.
-    mv ./encoded_clips/vp8/${clip_stem}_${rate}kbps.webm \
-      ./encoded_clips/vp8/${clip_stem}_${encoded_rate}kbps.webm
+    mv -f ./encoded_clips/vp8/${clip_stem}_${rate}kbps.webm \
+      ./encoded_clips/vp8/${clip_stem}_${encoded_rate}_kbps.webm
 
     echo "${encoded_rate} ${psnr}" >> ./stats/vp8/${clip_stem}.txt
 

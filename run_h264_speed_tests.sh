@@ -42,10 +42,11 @@ do
   fi
   for mode in ultrafast superfast veryfast faster fast medium slow slower veryslow
   do
-    # Encode into ./encoded_clips/h264/${clip_stem}_${mode}.mkv
+    # Encode into ./<clip_name>_<width>_<height>_<frame_rate>_<rate>kbps.yuv
     encode_time=` { time \
-      x264 --vbv-bufsize ${rate} --bitrate ${rate} --fps ${frame_rate} \
-      --profile baseline --no-scenecut --keyint infinite \
+      x264 --nal-hrd cbr --vbv-maxrate ${rate} --vbv-bufsize ${rate} \
+       --vbv-init 0.8 --bitrate ${rate} --fps ${frame_rate} \
+      --profile baseline --no-scenecut --keyint infinite --tune=psnr \
       --input-res ${width}x${height} --preset ${mode} --threads=1 \
       -o ./encoded_clips/h264/${clip_stem}_${mode}.mkv ${filename} \
       2> ./logs/h264/${clip_stem}_${mode}.txt; } 2>&1 | \

@@ -43,18 +43,18 @@ do
   for mode in -16 -15 -14 -13 -12 -11 -10 -9 -8 -7 -6 -5 -4 -3 -2 -1
   do
 
-    # Encode into ./encoded_clips/vp8/${clip_stem}_${mode}.webm
+    # Encode into ./<clip_name>_<width>_<height>_<frame_rate>_<rate>kbps.yuv
     static_thresh=1
     if (( ${mode} < -10 )); then
       let static_thresh=1000
     fi
     encode_time=` { time \
       ./bin/vpxenc --lag-in-frames=0 --target-bitrate=${rate} --kf-min-dist=3000 \
-      --kf-max-dist=3000 -t 1 --cpu-used=${mode} --fps=${frame_rate}/1 \
+      -t 1 --kf-max-dist=3000 --cpu-used=${mode} --fps=${frame_rate}/1 \
       --static-thresh=${static_thresh} \
       --token-parts=1 --drop-frame=0 --end-usage=cbr --min-q=2 --max-q=56 \
       --undershoot-pct=100 --overshoot-pct=15 --buf-sz=1000 -q \
-      --buf-initial-sz=5000 --buf-optimal-sz=600 --max-intra-rate=1200 \
+      --buf-initial-sz=800 --buf-optimal-sz=1000 --max-intra-rate=1200 \
       --resize-allowed=0 --drop-frame=0 --passes=1 --rt --noise-sensitivity=0 \
       -w ${width} -h ${height} ${filename} --codec=vp8 \
       -o ./encoded_clips/vp8/${clip_stem}_${mode}.webm \
