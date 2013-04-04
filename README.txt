@@ -6,6 +6,14 @@ Objective:
 
 To compare the typical performance of VP8 and H.264 in a real-time scenario.
 
+Short instructions:
+
+./fetch_videos.sh
+./install_software.sh
+./run_vp8_tests.sh video
+./run_h264_tests.sh video
+./draw_graphs.sh
+
 Methodology:
 
 We gathered a small set of test clips containing content that is

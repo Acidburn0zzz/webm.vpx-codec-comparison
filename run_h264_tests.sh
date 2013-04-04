@@ -5,6 +5,10 @@
 
 # Input Parameters:
 #  $1=Input directory
+if [ ! -d "$1" ]; then
+  echo "No such directory: $1"
+  exit 1
+fi
 
 if [ ! -d encoded_clips ]; then
   mkdir encoded_clips
@@ -50,7 +54,7 @@ do
   for (( rate=rate_start; rate<=rate_end; rate+=rate_step ))
   do
     # Encode into ./<clip_name>_<width>_<height>_<frame_rate>_<rate>kbps.yuv
-    x264 --nal-hrd cbr --vbv-maxrate ${rate} --vbv-bufsize ${rate} \
+    ./bin/x264 --nal-hrd cbr --vbv-maxrate ${rate} --vbv-bufsize ${rate} \
       --vbv-init 0.8 --bitrate ${rate} --fps ${frame_rate} \
       --profile baseline --no-scenecut --keyint infinite --preset veryslow \
       --input-res ${width}x${height} \
