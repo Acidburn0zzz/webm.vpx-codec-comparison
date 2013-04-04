@@ -6,6 +6,8 @@
 # Input Parameters:
 #  $1=Input directory
 
+tempyuvfile=$(mktemp ./tempXXXXX.yuv)
+
 if [ ! -d encoded_clips ]; then
   mkdir encoded_clips
   mkdir encoded_clips/h264
@@ -36,6 +38,9 @@ do
   height=${part[2]}
   frame_rate=${part[3]}
 
+  # Reset previous run data
+  rm -f ./stats/vp8/${clip_stem}.txt
+
   # Data-rate range depends on input format
   if [ ${width} -gt 640 ]; then
     rate_start=800
@@ -49,6 +54,7 @@ do
 
   for (( rate=rate_start; rate<=rate_end; rate+=rate_step ))
   do
+    echo "Encoding for $rate"
     # Encode video into the following file:
     #  ./<clip_name>_<width>_<height>_<frame_rate>_<rate>kbps.yuv
     # Data-rate & PSNR will be output to the file "opsnr.stt"
@@ -64,19 +70,26 @@ do
 
     # Decode the clip to a temporary file in order to compute PSNR and extract
     # bitrate.
-    encoded_rate=( `ffmpeg -i ./encoded_clips/vp8/${clip_stem}_${rate}kbps.webm \
-      temp.yuv 2>&1 | awk '/bitrate/ { print $6 }'` )
+    rm -f $tempyuvfile
+    encoded_rate=( `bin/ffmpeg -i ./encoded_clips/vp8/${clip_stem}_${rate}kbps.webm \
+      $tempyuvfile 2>&1 | awk '/bitrate:/ { print $6 }'` )
+    if expr $encoded_rate + 0 > /dev/null; then
 
-    # Compute the global PSNR.
-    psnr=$(./bin/psnr ${filename} temp.yuv ${width} ${height} 9999)
+      # Compute the global PSNR.
+      psnr=$(./bin/psnr ${filename} $tempyuvfile ${width} ${height} 9999)
 
-    # Rename the file to reflect the encoded datarate.
-    mv -f ./encoded_clips/vp8/${clip_stem}_${rate}kbps.webm \
-      ./encoded_clips/vp8/${clip_stem}_${encoded_rate}_kbps.webm
+      # Rename the file to reflect the encoded datarate.
+      if [ $rate -ne $encoded_rate ]; then
+        mv -f ./encoded_clips/vp8/${clip_stem}_${rate}kbps.webm \
+          ./encoded_clips/vp8/${clip_stem}_${encoded_rate}_kbps.webm
+      fi
+      echo "${encoded_rate} ${psnr}" >> ./stats/vp8/${clip_stem}.txt
+    else
+      echo "Non-numeric bitrate $encoded_rate"
+      exit 1
+    fi
 
-    echo "${encoded_rate} ${psnr}" >> ./stats/vp8/${clip_stem}.txt
-
-    rm -f temp.yuv
+    rm -f $tempyuvfile
   done
 
   rm -f opsnr.stt

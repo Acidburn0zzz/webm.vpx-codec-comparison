@@ -9,6 +9,7 @@ set -e
 sudo apt-get install ffmpeg
 sudo apt-get install x264
 sudo apt-get install python
+sudo apt-get install python-numpy
 # Reqiurements for compiling libvpx
 sudo apt-get install yasm
 
@@ -36,6 +37,17 @@ git checkout 198a7ea
 ./configure
 make x264
 cp x264 ../bin/
+cd ..
+
+# Build the ffmpeg binary
+if [ ! -d ffmpeg ]; then
+  git clone git://source.ffmpeg.org/ffmpeg.git ffmpeg
+fi
+cd ffmpeg
+git checkout ae04493
+./configure
+make ffmpeg
+cp ffmpeg ../bin/
 
 # Build the psnr binary
 gcc -o bin/psnr src/psnr.c -lm

@@ -5,6 +5,9 @@
 
 # Input Parameters:
 #  $1=Input directory
+
+tempyuvfile=$(mktemp ./tempXXXXX.yuv)
+
 if [ ! -d "$1" ]; then
   echo "No such directory: $1"
   exit 1
@@ -40,6 +43,9 @@ do
   height=${part[2]}
   frame_rate=${part[3]}
 
+  # Reset previous run data
+  rm -f ./stats/h264/${clip_stem}.txt
+
   # Data-rate range depends on input format
   if [ ${width} -gt 640 ]; then
     rate_start=800
@@ -53,6 +59,7 @@ do
 
   for (( rate=rate_start; rate<=rate_end; rate+=rate_step ))
   do
+    echo "Encoding for $rate"
     # Encode into ./<clip_name>_<width>_<height>_<frame_rate>_<rate>kbps.yuv
     ./bin/x264 --nal-hrd cbr --vbv-maxrate ${rate} --vbv-bufsize ${rate} \
       --vbv-init 0.8 --bitrate ${rate} --fps ${frame_rate} \
@@ -64,19 +71,25 @@ do
 
     # Decode the clip to a temporary file in order to compute PSNR and extract
     # bitrate.
-    encoded_rate=( `ffmpeg -i ./encoded_clips/h264/${clip_stem}_${rate}kbps.mkv \
-      temp.yuv 2>&1 | awk '/bitrate/ { print $6 }'` )
+    rm -f $tempyuvfile
+    encoded_rate=( `bin/ffmpeg -i ./encoded_clips/h264/${clip_stem}_${rate}kbps.mkv \
+      $tempyuvfile 2>&1 | awk '/bitrate:/ { print $6 }'` )
+    if expr $encoded_rate + 0 > /dev/null; then
+      # Compute the global PSNR.
+      psnr=$(./bin/psnr ${filename} $tempyuvfile ${width} ${height} 9999)
 
-    # Compute the global PSNR.
-    psnr=$(./bin/psnr ${filename} temp.yuv ${width} ${height} 9999)
+      if [ $rate -ne $encoded_rate ]; then
+        # Rename the file to reflect the encoded datarate.
+        mv ./encoded_clips/h264/${clip_stem}_${rate}kbps.mkv \
+          ./encoded_clips/h264/${clip_stem}_${encoded_rate}kbps.mkv
+      fi
+      echo "${encoded_rate} ${psnr}" >> ./stats/h264/${clip_stem}.txt
+    else
+      echo "Non-numeric bitrate $encoded_rate"
+      exit 1
+    fi
 
-    # Rename the file to reflect the encoded datarate.
-    mv ./encoded_clips/h264/${clip_stem}_${rate}kbps.mkv \
-      ./encoded_clips/h264/${clip_stem}_${encoded_rate}kbps.mkv
-
-    echo "${encoded_rate} ${psnr}" >> ./stats/h264/${clip_stem}.txt
-
-    rm -f temp.yuv
+    rm -f $tempyuvfile
   done
 done
 
