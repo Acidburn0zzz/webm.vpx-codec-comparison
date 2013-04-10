@@ -1,0 +1,25 @@
+This directory contains video speed and quality tests.
+
+The structure is as follows:
+
+video/ - contains the source .yuv files for the tests
+
+The results storage:
+
+<codecname> - contains the data for one particular codec (VP8 or H.264)
+  /<crypticdir>/ - contains runs for one set of codec settings
+     encoder - script that encodes the file with the given settings
+               The <crypticdir> is the MD5 of this file.
+     measurer - script that generates the .results file
+     <sourcename>.<ext> - the encoded file
+     <sourcename>.results - the measured results for that file
+
+Scripts:
+
+generate_settings - generate a set of tests
+
+run_tests - runs the encoder for each dir that's missing a <ext> file.
+    Then runs the measurer for each dir where an <ext> file is present.
+
+report_results - picks a set of results (how?) and reports on them.
+

@@ -1,0 +1,126 @@
+#!/bin/sh
+#
+# Generate one or more settings files for codec comparision tests.
+#
+set -e
+
+TEMPFILE=$(mktemp ./tempXXXXencoder)
+
+extension() {
+  if [ $CODEC == "vp8" ]; then
+    echo "webm"
+  elif [ $CODEC == "h264" ]; then
+    echo "mkv"
+  else
+    echo "Unknown codec $CODEC"
+    exit 1
+  fi
+}
+
+vp8encoder() {
+# Generate the encoder file. Note that the fingerprint on this is the ID of the
+# encoder instance, so don't make changes here lightly!
+cat << EoF > $TEMPFILE
+#!/bin/sh
+# Generated encoder for encoding VP8 at $rate kbps.
+# Command line format: ./encoder <filename> <framerate> <width> <height>
+# The script must be executed within the directory it's placed in.
+filename=\$1
+frame_rate=\$2
+width=\$3
+height=\$4
+rate=$rate
+
+basename=\$(basename \$filename .yuv)
+
+../../bin/vpxenc --lag-in-frames=0 --target-bitrate=\${rate} --kf-min-dist=3000 \
+      --kf-max-dist=3000 --cpu-used=0 --fps=\${frame_rate}/1 --static-thresh=0 \
+      --token-parts=1 --drop-frame=0 --end-usage=cbr --min-q=2 --max-q=56 \
+      --undershoot-pct=100 --overshoot-pct=15 --buf-sz=1000 \
+      --buf-initial-sz=800 --buf-optimal-sz=1000 --max-intra-rate=1200 \
+      --resize-allowed=0 --drop-frame=0 --passes=1 --good --noise-sensitivity=0 \
+      -w \${width} -h \${height} \${filename} --codec=vp8 \
+      -o ./\$basename.webm \
+
+EoF
+}
+
+h264encoder() {
+# Generate the encoder file. Note that the fingerprint on this is the ID of the
+# encoder instance, so don't make changes here lightly!
+cat << EoF > $TEMPFILE
+#!/bin/sh
+# Generated encoder for encoding H.264 at $rate kbps.
+# Command line format: ./encoder <filename> <framerate> <width> <height>
+# The script must be executed within the directory it's placed in.
+filename=\$1
+frame_rate=\$2
+width=\$3
+height=\$4
+rate=$rate
+
+basename=\$(basename \$filename .yuv)
+
+   ../../bin/x264 --vbv-maxrate \${rate} --vbv-bufsize \${rate} \
+      --vbv-init 0.8 --bitrate \${rate} --fps \${frame_rate} \
+      --profile baseline --no-scenecut --keyint infinite --preset veryslow \
+      --input-res \${width}x\${height} \
+      --tune psnr \
+      -o ./\$basename.mkv \$filename
+EoF
+}
+
+encoder() {
+  if [ $CODEC == "vp8" ]; then
+    vp8encoder
+  else
+    h264encoder
+  fi
+}
+
+measurer() {
+  cat << EoF > $1/measurer
+#!/bin/sh
+# Generated measurer for an encode of $CODEC at target rate $rate kbps.
+# Command line format: measurer filename framerate width heigth
+#
+set -e
+
+filename=\$1
+frame_rate=\$2
+width=\$3
+height=\$4
+extension=$(extension)
+
+basename=\$(basename \$filename .yuv)
+
+rm -f tempyuvfile.yuv
+encoded_rate=( \$(../../bin/ffmpeg -i ./\$basename.\$extension \
+      tempyuvfile.yuv 2>&1 | awk '/bitrate:/ { print \$6 }') )
+psnr=\$(../../bin/psnr \$filename tempyuvfile.yuv \$width \$height 9999)
+cat << EoF2 > \$basename.results
+target_rate=$rate
+encoded_rate=\$encoded_rate
+psnr=\$psnr
+EoF2
+EoF
+}
+
+for (( rate=200; rate<=1600; rate+=200 )); do
+  for CODEC in "vp8" "h264"; do
+    if [ ! -d $CODEC ]; then
+      mkdir $CODEC
+    fi
+    encoder
+    # Move the encoder file into the workdir for this encoding.
+    DIR=$(md5sum $TEMPFILE | cut -b1-12)
+    if [ ! -d $CODEC/$DIR ]; then
+      mkdir $CODEC/$DIR
+    fi
+    mv $TEMPFILE $CODEC/$DIR/encoder
+    measurer $CODEC/$DIR
+    chmod +x $CODEC/$DIR/encoder
+    chmod +x $CODEC/$DIR/measurer
+  done
+done
+
