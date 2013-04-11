@@ -2,7 +2,32 @@
 #
 # Generate one or more settings files for codec comparision tests.
 #
+# Usage:
+#
+# generate-settings [--list]
+#
+# With --list, will list the config directories that would be generated.
+# Without --list, will create the config directories and put an encoder
+# and a measurer within each.
 set -e
+
+list=0
+finished=0
+while [ $finished == 0 ]; do
+  case $1 in
+  --list)
+    list=1
+    shift
+    ;;
+  --*)
+    echo "Unknown option $1"
+    exit 1
+    ;;
+  *)
+    finished=1
+    ;;
+  esac
+done
 
 TEMPFILE=$(mktemp ./tempXXXXencoder)
 
@@ -112,15 +137,20 @@ for (( rate=200; rate<=1600; rate+=200 )); do
       mkdir $CODEC
     fi
     encoder
-    # Move the encoder file into the workdir for this encoding.
     DIR=$(md5sum $TEMPFILE | cut -b1-12)
-    if [ ! -d $CODEC/$DIR ]; then
-      mkdir $CODEC/$DIR
+    if [ $list == 1 ]; then
+      # List the dirs that would be generated
+      echo $CODEC/$DIR
+    else
+      # Move the encoder file into the workdir for this encoding.
+      if [ ! -d $CODEC/$DIR ]; then
+        mkdir $CODEC/$DIR
+      fi
+      mv $TEMPFILE $CODEC/$DIR/encoder
+      measurer $CODEC/$DIR
+      chmod +x $CODEC/$DIR/encoder
+      chmod +x $CODEC/$DIR/measurer
     fi
-    mv $TEMPFILE $CODEC/$DIR/encoder
-    measurer $CODEC/$DIR
-    chmod +x $CODEC/$DIR/encoder
-    chmod +x $CODEC/$DIR/measurer
   done
 done
 

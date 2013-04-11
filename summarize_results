@@ -1,0 +1,20 @@
+#!/bin/sh
+#
+# Generate results in a format suitable for input to the visual_metrics.py script,
+# and run that.
+#
+
+rm vp8/*.txt
+rm h264/*.txt
+
+for dir in $(./generate_settings --list); do
+  codec=$(dirname $dir)
+  for file in $dir/*.results; do
+    datafile=$(basename $file .results)
+    rate=$(grep 'encoded_rate=' $file | cut -d= -f2)
+    psnr=$(grep 'psnr=' $file | cut -d= -f2)
+    echo "$rate $psnr" >> $codec/$datafile.txt
+  done
+done
+
+./visual_metrics.py metrics_template.html "*.txt" vp8 h264 > vp8_vs_h264_quality_new.html
