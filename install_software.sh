@@ -22,8 +22,10 @@ cd libvpx
 git checkout master
 git checkout c129203f7e5e20f5d67f92c27c65f7d5e362aa7a
 ./configure
-make vpxenc
-make vpxdec
+# There's something wrong in the make for libvpx at this version.
+# Ignore the result code from make. We'll bail if vpxenc and vpxdec
+# were not built.
+make || echo "Something went wrong building libvpx, continuing"
 cp vpxenc ../bin/
 cp vpxdec ../bin/
 cd ..
@@ -48,6 +50,7 @@ git checkout ae04493
 ./configure
 make ffmpeg
 cp ffmpeg ../bin/
+cd ..
 
 # Build the psnr binary
 gcc -o bin/psnr src/psnr.c -lm
