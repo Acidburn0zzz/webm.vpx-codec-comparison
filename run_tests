@@ -11,58 +11,12 @@ for sourcefile in $@; do
   # filename format: <path>/<clip_name>_<width>_<height>_<frame_rate>.yuv
   pathless=$(basename ${sourcefile})
   clip_stem=${pathless%.*}
-  case $clip_stem in
-      *_*_*_*)
-          part=($(echo $clip_stem | tr "_" "\n"))
-          width=${part[1]}
-          height=${part[2]}
-          frame_rate=${part[3]}
-          ;;
-      *_*x*_*)
-          part=($(echo $clip_stem | tr "_" "\n"))
-          wh=($(echo ${part[1]} | tr "x" "\n"))
-          width=${wh[0]}
-          height=${wh[1]}
-          frame_rate=${part[2]}
-          ;;
-      default)
-          echo "Cannot decipher file pattern $pathless"
-          exit 1
-          ;;
-  esac
 
   echo "Clip $clip_stem"
   # Detecting test dirs by looking for the file name "measurer". Somewhat
   # fragile.
   for measurer in */*/measurer; do
      dir=$(dirname $measurer)
-     echo "Settings $dir"
-     encoded=0
-     results=0
-     for result in $(ls $dir/$clip_stem.* 2>/dev/null); do
-       case $result in
-         *.results)
-           results=1
-           ;;
-         *.webm)
-           encoded=1
-           ;;
-         *.mkv)
-           encoded=1
-           ;;
-         *)
-           echo "What is $result doing here?"
-         esac
-      done
-     if [ $encoded == 0 ]; then
-        (cd $dir; ./encoder ../../$sourcefile $frame_rate $width $height)
-     else
-        echo "Already encoded $clip_stem"
-     fi
-     if [ $results == 0 ]; then
-        (cd $dir; ./measurer ../../$sourcefile $frame_rate $width $height)
-     else
-        echo "Known results for $clip_stem"
-     fi
+     ./run_one_test $dir $sourcefile
   done
 done

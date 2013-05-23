@@ -1,0 +1,90 @@
+#!/bin/sh
+#
+# Run one test out of one configuration directory.
+#
+# Arguments: configdir videofile
+#
+force=0
+
+case $1 in
+  -f)
+    force=1
+    shift
+    ;;
+  -*)
+    echo "No such option: $1"
+    exit 1
+    ;;
+  default)
+    # do nothing
+    ;;
+esac
+
+dir=$1
+sourcefile=$2
+
+if [ ! -f "$sourcefile" ]; then
+  echo "No sourcefile"
+  exit 1
+fi
+if [ ! -d $dir ]; then
+  echo "No config directory"
+  exit 1
+fi
+
+pathless=$(basename ${sourcefile})
+clip_stem=${pathless%.*}
+case $clip_stem in
+  # filename format: <path>/<clip_name>_<width>_<height>_<frame_rate>.yuv
+  # There can be _noise after the frame_rate.
+  *_*x*_*)
+    part=($(echo $clip_stem | tr "_" "\n"))
+    wh=($(echo ${part[1]} | tr "x" "\n"))
+    width=${wh[0]}
+    height=${wh[1]}
+    frame_rate=${part[2]}
+    ;;
+  # filename format: <path>/<clip_name>_<width>_<height>_<frame_rate>.yuv
+  *_*_*_*)
+    part=($(echo $clip_stem | tr "_" "\n"))
+    width=${part[1]}
+    height=${part[2]}
+    frame_rate=${part[3]}
+    ;;
+  default)
+    echo "Cannot decipher file pattern $pathless"
+    exit 1
+    ;;
+esac
+
+echo "Settings $dir"
+encoded=0
+results=0
+for result in $(ls $dir/$clip_stem.* 2>/dev/null); do
+  case $result in
+    *.results)
+      results=1
+      ;;
+    *.webm)
+      encoded=1
+      ;;
+    *.mkv)
+      encoded=1
+      ;;
+    *)
+      echo "What is $result doing here?"
+      exit 1
+    esac
+ done
+if [ $encoded == 0 -o $force == 1 ]; then
+   (cd $dir; ./encoder ../../$sourcefile $frame_rate $width $height)
+else
+   echo "Already encoded $clip_stem"
+fi
+if [ $results == 0 -o $force == 1 ]; then
+   (cd $dir; ./measurer ../../$sourcefile $frame_rate $width $height)
+   # Necessary to save space while not modifying the measurer script.
+   rm $dir/tempyuvfile.yuv
+else
+   echo "Known results for $clip_stem"
+fi

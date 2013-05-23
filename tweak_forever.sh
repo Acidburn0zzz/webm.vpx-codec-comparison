@@ -4,10 +4,14 @@
 #
 set -e
 
-RATE=400
-FILE=mpeg_video/Johnny_1280x720_60.yuv
+RATE=${1-1600}
+#FILE=mpeg_video/PeopleOnStreet_2560x1600_30_crop.yuv
+FILE=mpeg_video/Traffic_2560x1600_30_crop.yuv
 
 while true; do
+  for config in $(./select_tests.py $RATE $FILE | head -5); do
+    echo "./run_one_test $config $FILE"
+    ./run_one_test $config $FILE >> /tmp/encodelogfile 2>&1
+  done
   ./tweak_options.py $RATE $FILE
-  ./run_tests $FILE >> /tmp/encodelogfile 2>&1
 done

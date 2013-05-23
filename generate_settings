@@ -131,7 +131,11 @@ EoF2
 EoF
 }
 
-for (( rate=200; rate<=1600; rate+=200 )); do
+# Generate a template file for each of the rates in the ISO CFP.
+# Not all rates make sense for all files.
+for rate in 256 384 512 850 1200 1500 1600 2000 2500 3000 \
+      3500 4500 5000 6000 7000 8000 10000 14000; do
+  echo "Rate $rate"
   for CODEC in "vp8" "h264"; do
     if [ ! -d $CODEC ]; then
       mkdir $CODEC
