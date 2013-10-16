@@ -61,8 +61,10 @@ do
   do
     echo "Encoding for $rate"
     # Encode into ./<clip_name>_<width>_<height>_<frame_rate>_<rate>kbps.yuv
-    ./bin/x264 --nal-hrd cbr --vbv-maxrate ${rate} --vbv-bufsize ${rate} \
-      --vbv-init 0.8 --bitrate ${rate} --fps ${frame_rate} \
+    ./bin/x264 \
+      --vbv-bufsize ${rate} \
+      --bitrate ${rate} --fps ${frame_rate} \
+      --threads 1 \
       --profile baseline --no-scenecut --keyint infinite --preset veryslow \
       --input-res ${width}x${height} \
       --tune psnr \

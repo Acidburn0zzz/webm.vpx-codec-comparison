@@ -35,7 +35,7 @@ if [ ! -d x264 ]; then
   git clone git://git.videolan.org/x264.git
 fi
 cd x264
-git checkout 198a7ea
+git checkout d967c09
 ./configure
 make x264
 cp x264 ../bin/
