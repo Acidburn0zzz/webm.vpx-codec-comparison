@@ -8,6 +8,8 @@
 
 tempyuvfile=$(mktemp ./tempXXXXX.yuv)
 
+H264CONFIG=5
+
 if [ ! -d "$1" ]; then
   echo "No such directory: $1"
   exit 1
@@ -61,7 +63,22 @@ do
   do
     echo "Encoding for $rate"
     # Encode into ./<clip_name>_<width>_<height>_<frame_rate>_<rate>kbps.yuv
-    ./bin/x264 \
+    case $H264CONFIG in
+    0)
+      # Configuration from previous @HEAD
+      ./bin/x264 \
+        --vbv-bufsize ${rate} \
+        --bitrate ${rate} --fps ${frame_rate} \
+        --threads 1 \
+        --profile baseline --no-scenecut --keyint infinite --preset veryslow \
+        --input-res ${width}x${height} \
+        --tune psnr \
+        -o ./encoded_clips/h264/${clip_stem}_${rate}kbps.mkv ${filename} \
+        2> ./logs/h264/${clip_stem}_${rate}kbps.txt
+        ;;
+    1)
+      # Configuration by Bo Burman
+      ./bin/x264 \
       --vbv-bufsize ${rate} \
       --bitrate ${rate} --fps ${frame_rate} \
       --threads 1 \
@@ -70,6 +87,53 @@ do
       --tune psnr \
       -o ./encoded_clips/h264/${clip_stem}_${rate}kbps.mkv ${filename} \
       2> ./logs/h264/${clip_stem}_${rate}kbps.txt
+
+      ;;
+    3)
+      # As above, but add --vbv-maxrate ${rate} and --vbv-init 0.8
+      ./bin/x264 \
+      --vbv-bufsize ${rate} \
+      --vbv-maxrate ${rate} --vbv-init 0.8 \
+      --bitrate ${rate} --fps ${frame_rate} \
+      --threads 1 \
+      --profile baseline --no-scenecut --keyint infinite --preset veryslow \
+      --input-res ${width}x${height} \
+      --tune psnr \
+      -o ./encoded_clips/h264/${clip_stem}_${rate}kbps.mkv ${filename} \
+      2> ./logs/h264/${clip_stem}_${rate}kbps.txt
+      ;;
+    4)
+      # As above, but remove lookahead (as not appropriate for VC mode)
+      ./bin/x264 \
+      --vbv-maxrate ${rate} --vbv-bufsize ${rate} --vbv-init 0.8 \
+      --bitrate ${rate} --fps ${frame_rate} \
+      --threads 1 \
+      --rc-lookahead 0 \
+      --profile baseline --no-scenecut --keyint infinite --preset veryslow \
+      --input-res ${width}x${height} \
+      --tune psnr \
+      -o ./encoded_clips/h264/${clip_stem}_${rate}kbps.mkv ${filename} \
+      2> ./logs/h264/${clip_stem}_${rate}kbps.txt
+      ;;
+    5)
+      # As above, but limit the reference frames to 2
+      ./bin/x264 \
+      --vbv-maxrate ${rate} --vbv-bufsize ${rate} --vbv-init 0.8 \
+      --bitrate ${rate} --fps ${frame_rate} \
+      --threads 1 \
+      --rc-lookahead 0 \
+      --ref 2 \
+      --profile baseline --no-scenecut --keyint infinite --preset veryslow \
+      --input-res ${width}x${height} \
+      --tune psnr \
+      -o ./encoded_clips/h264/${clip_stem}_${rate}kbps.mkv ${filename} \
+      2> ./logs/h264/${clip_stem}_${rate}kbps.txt
+      ;;
+    *)
+      echo "No such configuration"
+      exit 1
+      ;;
+    esac
 
     # Decode the clip to a temporary file in order to compute PSNR and extract
     # bitrate.

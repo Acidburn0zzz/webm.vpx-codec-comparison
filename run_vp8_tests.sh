@@ -58,15 +58,25 @@ do
     # Encode video into the following file:
     #  ./<clip_name>_<width>_<height>_<frame_rate>_<rate>kbps.yuv
     # Data-rate & PSNR will be output to the file "opsnr.stt"
-    ./bin/vpxenc --lag-in-frames=0 --target-bitrate=${rate} --kf-min-dist=3000 \
-      --kf-max-dist=3000 --cpu-used=0 --fps=${frame_rate}/1 --static-thresh=0 \
-      --token-parts=1 --drop-frame=0 --end-usage=cbr --min-q=2 --max-q=56 \
-      --undershoot-pct=100 --overshoot-pct=15 --buf-sz=1000 \
-      --buf-initial-sz=800 --buf-optimal-sz=1000 --max-intra-rate=1200 \
-      --resize-allowed=0 --drop-frame=0 --passes=1 --good --noise-sensitivity=0 \
+    # Settings from Adrian's Oct 26 message.
+    ./bin/vpxenc \
+      --passes=1 --best \
+      --end-usage=cbr \
+      --buf-sz=1000 --buf-optimal-sz=1000 --buf-initial-sz=800 \
+      --undershoot-pct=100 --overshoot-pct=15 \
+      --min-q=2 --max-q=56 \
+      --max-intra-rate=1200 \
+      --kf-min-dist=9999 --kf-max-dist=9999 \
+      --lag-in-frames=0 \
+      --drop-frame=0 \
+      --resize-allowed=0 \
+      --target-bitrate=${rate} --fps=${frame_rate}/1 \
+      --static-thresh=0 --noise-sensitivity=0 \
+      --token-parts=1 \
       -w ${width} -h ${height} ${filename} --codec=vp8 \
       -o ./encoded_clips/vp8/${clip_stem}_${rate}kbps.webm \
       &>./logs/vp8/${clip_stem}_${rate}kbps.txt
+
 
     # Decode the clip to a temporary file in order to compute PSNR and extract
     # bitrate.
