@@ -9,7 +9,7 @@ The codec has a set of options that can have varying values.
 
 An encoder is a codec with a given set of options.
 
-An encoding is an encoder applied to a given filename and target bitrate. 
+An encoding is an encoder applied to a given filename and target bitrate.
 
 A variant is an encoder with at least one option changed.
 """
@@ -33,8 +33,7 @@ class Option(object):
   Typically the command line representation is "--name=value".
   This class provides functions to modify an option in a command line string.
   """
-  def __init__(self, name, values):
-    assert(len(values) > 1)
+  def __init__(self, name, values=[]):
     self.name = name
     self.values = frozenset(values)
 
@@ -42,19 +41,29 @@ class Option(object):
     """Find a new value for the option, different from not_this.
     not_this doesn't have to be a member of the values list, but can be.
     """
+    assert(len(self.values) > 1)
     rest = list(self.values - set([not_this]))
     return rest[random.randint(0, len(rest) - 1)]
 
   def OptionString(self, value):
     return '--%s=%s' % (self.name, value)
 
-  def _ChangedOption(self, matchobj):
-    return self.OptionString(self.PickAnother(matchobj.group(1)))
+  def _OptionSearchExpression(self):
+    return r'--%s=(\S+)' % self.name
+
+  def GetValue(self, config):
+    m = re.search(self._OptionSearchExpression(), config)
+    if not m:
+      raise Error('No value for option %s' % self.name)
+    return m.group(1)
+
+  def SetValue(self, config, new_value):
+    return re.sub(self._OptionSearchExpression(),
+                  self.OptionString(new_value), config)
 
   def RandomlyPatchConfig(self, config):
     """ Modify a configuration by changing the value of this parameter."""
-    newconfig = re.sub(r'--%s=(\S+)' % self.name,  self._ChangedOption,
-                       config)
+    newconfig = self.SetValue(config, self.PickAnother(self.GetValue(config)))
     assert(config != newconfig)
     return newconfig
 
@@ -70,8 +79,7 @@ class ChoiceOption(Option):
   def OptionString(self, value):
     return '--%s' % value
 
-  def RandomlyPatchConfig(self, config):
-    """ Modify a configuration by replacing the instance of this option."""
+  def GetValue(self, config):
     current_flags = set([flag[2:] for flag in config.split()
                          if flag.startswith('--')])
     these_flags = current_flags & self.values
@@ -79,12 +87,27 @@ class ChoiceOption(Option):
       raise Error('No choice option alternative given')
     if len(these_flags) > 1:
       raise Error('Mutually exclusive option alternatives given')
-    current_flag = these_flags.pop()
+    return these_flags.pop()
+
+  def RandomlyPatchConfig(self, config):
+    """ Modify a configuration by replacing the instance of this option."""
+    current_flag = self.GetValue(config)
     next_flag = self.PickAnother(current_flag)
     newconfig = re.sub(r'--%s\b' % current_flag,
                        '--%s' % next_flag, config)
     assert(config != newconfig)
     return newconfig
+
+
+class IntegerOption(Option):
+  """This class represents an option with a range of values.
+  """
+  def __init__(self, name, min, max):
+    """Note that the value of the max parameter is included in the set."""
+    self.name = name
+    self.values = frozenset([str(s) for s in xrange(min, max+1)])
+    self.min = min
+    self.max = max
 
 
 class Videofile(object):
@@ -131,12 +154,30 @@ class Codec(object):
   def Execute(self, parameters, bitrate, videofile, workdir):
     raise Error("The base codec class can't execute anything")
 
+  def ConfigurationFixups(self, config):
+    """Hook for applying inter-parameter tweaks."""
+    return config
+
   def RandomlyChangeConfig(self, parameters):
     option_to_change = self.options[random.randint(0, len(self.options)-1)]
-    return option_to_change.RandomlyPatchConfig(parameters)
+    config = option_to_change.RandomlyPatchConfig(parameters)
+    return self.ConfigurationFixups(config)
 
   def ScoreResult(self, bitrate, result):
     raise NotImplementedError
+
+  def SpeedGroup(self, bitrate):
+    """Return the speed group of a bitrate.
+    Intended for making subdirectories to search in when finding
+    reasonable encoders to try.
+    The default is to have one directory per target bitrate, since
+    encodings with different target bitrates will be different."""
+    return str(bitrate)
+
+  def SuggestTweak(self, encoding):
+    """Suggest a tweaked encoder based on an encoding result."""
+    return None
+
 
 class Encoder(object):
   """This class represents a codec with a specific set of parameters.
@@ -175,6 +216,20 @@ class Encoder(object):
     hashname = m.hexdigest()[:12]
     return hashname
 
+  def OptionValue(self, option_name):
+    """Returns the value of an option, or '?' if option has no value."""
+    try:
+      return Option(option_name).GetValue(self.parameters)
+    except Error:
+      return '?'
+
+  def ChoiceValue(self, option_name_list):
+    """Returns the value of an option, or '?' if option has no value."""
+    try:
+      return ChoiceOption(option_name_list).GetValue(self.parameters)
+    except Error:
+      return '?'
+
 
 class Encoding(object):
   """The encoding represents the result of applying a specific encoder
@@ -187,29 +242,49 @@ class Encoding(object):
     videofile - a Videofile
     """
     self.encoder = encoder
+    assert(type(bitrate) == type(0))
     self.bitrate = bitrate
     self.videofile = videofile
     self.result = None
 
-  def SomeUntriedVariants(self):
+  def SomeUntriedVariants(self, num_tweaks=1):
     """Returns some variant encodings that have not been tried.
 
     If no such variant can be found, returns an empty EncodingSet.
     """
-    result = EncodingSet(())
-    variant_encoder = Encoder(
-      self.encoder.codec,
-      self.encoder.codec.RandomlyChangeConfig(self.encoder.parameters))
-    variant_encoding = Encoding(variant_encoder, self.bitrate, self.videofile)
-    variant_encoding.Recover()
-    if variant_encoding.Score():
-      return EncodingSet([])
-    else:
-      return EncodingSet([variant_encoding])
+    result = []
+    # Check for suggested variants.
+    suggested_tweak = self.encoder.codec.SuggestTweak(self)
+    if suggested_tweak:
+      suggested_tweak.Recover()
+      if not suggested_tweak.Score():
+        result.append(suggested_tweak)
+    # Generate up to 10 single-hop variants.
+    for i in range(10):
+      variant_encoder = Encoder(
+        self.encoder.codec,
+        self.encoder.codec.RandomlyChangeConfig(self.encoder.parameters))
+      variant_encoding = Encoding(variant_encoder, self.bitrate, self.videofile)
+      variant_encoding.Recover()
+      if not variant_encoding.Score():
+        result.append(variant_encoding)
+    # If none resulted, try to make 2 changes.
+    if not result:
+      for i in range(10):
+        variant_encoder = Encoder(
+          self.encoder.codec,
+          self.encoder.codec.RandomlyChangeConfig(
+            self.encoder.codec.RandomlyChangeConfig(self.encoder.parameters)))
+        variant_encoding = Encoding(variant_encoder, self.bitrate, self.videofile)
+        variant_encoding.Recover()
+        if not variant_encoding.Score():
+          result.append(variant_encoding)
+
+    return EncodingSet(result)
 
   def Workdir(self):
     workdir = (self.encoder.codec.name + '/' + self.encoder.Hashname()
-               + '/' + str(self.bitrate))
+               + '/' + self.encoder.codec.SpeedGroup(self.bitrate))
     # TODO(hta): Make this storage subsys dependent.
     if not os.path.isdir(workdir):
       os.makedirs(workdir)
@@ -266,7 +341,7 @@ class EncodingDiskCache(object):
     candidates = []
     videofilename = videofile.filename
     basename = os.path.splitext(os.path.basename(videofilename))[0]
-    pattern = (self.codec.name + '/*/' + bitrate +
+    pattern = (self.codec.name + '/*/' + self.codec.SpeedGroup(bitrate) +
                       '/' + basename + '.result')
     files = glob.glob(pattern)
     for file in files:
@@ -307,7 +382,7 @@ class EncodingDiskCache(object):
     is encoded as part of the output filename.
     """
     dirname = '%s/%s/%s' % (self.codec.name, encoding.encoder.Hashname(),
-                            str(encoding.bitrate))
+                            self.codec.SpeedGroup(encoding.bitrate))
     if not os.path.isdir(dirname):
       os.mkdir(dirname)
     if not encoding.result:
@@ -321,7 +396,7 @@ class EncodingDiskCache(object):
 
     Encoder is unchanged if file does not exist."""
     dirname = ('%s/%s/%s' % (self.codec.name, encoding.encoder.Hashname(),
-                             str(encoding.bitrate)))
+                             self.codec.SpeedGroup(encoding.bitrate)))
     filename = '%s/%s.result' % (dirname, encoding.videofile.basename)
     if os.path.isfile(filename):
       with open(filename, 'r') as resultfile:
@@ -356,4 +431,4 @@ class EncodingMemoryCache(object):
   def StoreEncoding(self, encoding):
     self.encodings.append(encoding)
 
-      
+

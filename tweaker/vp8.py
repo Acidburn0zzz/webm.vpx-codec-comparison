@@ -53,7 +53,13 @@ class Vp8Codec(Codec):
                    + ' --codec=vp8 '
                    + ' -o ' + workdir + '/' + videofile.basename + '.webm')
     print commandline
-    subprocess.call(commandline, shell=True)
+    with open('/dev/null', 'r') as nullinput:
+      returncode = subprocess.call(commandline, shell=True, stdin=nullinput)
+      if returncode:
+        raise Exception("Encode failed with returncode " + str(returncode))
+    return self.Measure(bitrate, videofile, workdir)
+
+  def Measure(self, bitrate, videofile, workdir):
     result = {}
     tempyuvfile = "%s/%stempyuvfile.yuv" % (workdir, videofile.basename)
     if os.path.isfile(tempyuvfile):
@@ -62,12 +68,13 @@ class Vp8Codec(Codec):
     commandline = "../bin/ffmpeg -i %s/%s.webm %s 2>&1 | awk '/bitrate:/ { print $6 }'" % (workdir, videofile.basename,
                          tempyuvfile)
     print commandline
-    bitrate = subprocess.check_output(commandline, shell=True)
-    commandline = "../bin/psnr %s %s %d %d 9999" % (
-                         videofile.filename, tempyuvfile, videofile.width,
-                         videofile.height)
-    print commandline
-    psnr = subprocess.check_output(commandline, shell=True)
+    with open('/dev/null', 'r') as nullinput:
+      bitrate = subprocess.check_output(commandline, shell=True, stdin=nullinput)
+      commandline = "../bin/psnr %s %s %d %d 9999" % (
+        videofile.filename, tempyuvfile, videofile.width,
+        videofile.height)
+      print commandline
+      psnr = subprocess.check_output(commandline, shell=True, stdin=nullinput)
     print "Bitrate", bitrate, "PSNR", psnr
     result['bitrate'] = int(bitrate)
     result['psnr'] = float(psnr)
@@ -78,7 +85,10 @@ class Vp8Codec(Codec):
     if not result:
       return None
     score = result['psnr']
+    # Check that target_bitrate is an integer.
+    assert(type(target_bitrate) == type(0))
     if result['bitrate'] > target_bitrate:
-      score += (result['bitrate'] - target_bitrate) * 0.1
+      score -= (result['bitrate'] - target_bitrate) * 0.1
+      if score < 0.1:
+        score = 0.1
     return score
-      

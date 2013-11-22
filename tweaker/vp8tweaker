@@ -15,25 +15,39 @@ import sys
 
 import vp8
 import encoder
+import vp8_cq
 
 def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('rate')
   parser.add_argument('videofile')
   parser.add_argument("--loop", action="store_true", dest="loop")
+  parser.add_argument("--until_score", type=float)
+  parser.add_argument("--cq", action="store_true", dest="cq_mode")
   args = parser.parse_args()
 
   print "Loop is", args.loop
+  print "CQ mode is", args.cq_mode
+  print "Until score is", args.until_score
 
   videofile = encoder.Videofile(args.videofile)
 
-  codec = vp8.Vp8Codec()
+  if args.cq_mode:
+    codec = vp8_cq.Vp8CodecCqMode()
+  else:
+    codec = vp8.Vp8Codec()
+
+  bitrate = int(args.rate)
+
   while True:
-    bestsofar = codec.BestEncoding(args.rate, videofile)
+    bestsofar = codec.BestEncoding(bitrate, videofile)
     bestsofar.Recover()
     print "Starting from", bestsofar.encoder.Hashname(), \
            "score", bestsofar.Score()
     if bestsofar.Score():
+      if args.until_score and bestsofar.Score() > args.until_score:
+        print "Happy with the score achieved"
+        return 0
       variants = bestsofar.SomeUntriedVariants()
       next_encoding = variants.BestGuess()
       if not next_encoding:

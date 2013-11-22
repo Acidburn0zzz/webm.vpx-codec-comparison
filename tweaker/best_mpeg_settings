@@ -1,0 +1,41 @@
+#!/usr/bin/python
+#
+# List the best MPEG settings for CQ mode encodings.
+#
+
+import mpeg_settings
+from encoder import Videofile
+from vp8_cq import Vp8CodecCqMode
+
+def ListOne(file_stem, rate):
+  """Output one line describing the best encoding for this file."""
+  file = '../mpeg_video/' + file_stem
+  videofile = Videofile(file)
+  codec = Vp8CodecCqMode()
+  bestsofar = codec.BestEncoding(rate, videofile)
+  cq = bestsofar.encoder.OptionValue('min-q')
+  # Compute how many percent we are below the target bitrate.
+  # Numbers far below the target indicate room for improvement.
+  bitsleft = 100.0* (1.0 - float(bestsofar.result['bitrate']) / rate )
+  print \
+    bestsofar.encoder.Hashname(), \
+    cq, \
+    bestsofar.Score(), \
+    file_stem, rate,\
+    bestsofar.result['bitrate'], bestsofar.result['psnr'], \
+    bitsleft, '%'
+  return bitsleft
+
+
+def ListBest():
+  count = 0
+  wasted = 0.0
+  for classname in mpeg_settings.files.keys():
+    for file in mpeg_settings.files[classname]:
+      for rate in mpeg_settings.rates[classname]:
+        count += 1
+        wasted += ListOne(file, rate)
+  print "Average waste ", wasted / count, "%"
+
+if __name__ == '__main__':
+  ListBest()

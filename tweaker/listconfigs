@@ -1,0 +1,42 @@
+#!/usr/bin/python
+"""List configs with scores.
+
+"""
+
+import argparse
+import re
+import sys
+
+from vp8 import Vp8Codec
+from vp8_cq import Vp8CodecCqMode
+from encoder import Videofile
+
+def main():
+  parser = argparse.ArgumentParser()
+  parser.add_argument('rate')
+  parser.add_argument('videofile')
+  parser.add_argument("--cq", action="store_true", dest="cq_mode")
+  args = parser.parse_args()
+
+  print "CQ mode is", args.cq_mode
+
+  videofile = Videofile(args.videofile)
+
+  if args.cq_mode:
+    codec = Vp8CodecCqMode()
+  else:
+    codec = Vp8Codec()
+
+  bitrate = int(args.rate)
+
+  encodings = codec.AllScoredEncodings(bitrate, videofile)
+  encodings.encodings.sort(key=lambda foo: foo.Score())
+  for encoding in encodings.encodings:
+    minq = encoding.encoder.OptionValue('min-q')
+    best = encoding.encoder.ChoiceValue(['good', 'best', 'rt'])
+    print encoding.encoder.Hashname(), best, minq, encoding.Score(), \
+        encoding.result
+
+
+if __name__ == '__main__':
+  sys.exit(main())

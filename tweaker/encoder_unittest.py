@@ -26,12 +26,32 @@ class DummyCodec(encoder.Codec):
   def ScoreResult(self, target_bitrate, result):
     return result
 
-class NameOnlyCodec(object):
+class StorageOnlyCodec(object):
+  """A codec that is only useful for testing storage."""
   def __init__(self):
     self.name = 'unittest'
 
+  def SpeedGroup(self, bitrate):
+    return str(bitrate)
+
 
 class TestConfig(unittest.TestCase):
+  def test_GetValue(self):
+    config = '--foo=zoo'
+    option = encoder.Option('foo', ['zoo', 'bar'])
+    self.assertEqual(option.GetValue(config), 'zoo')
+
+  def test_GetValueNotPresent(self):
+    config = '--notfoo=foo'
+    option = encoder.Option('foo', ['foo', 'bar'])
+    with self.assertRaises(encoder.Error):
+      option.GetValue(config)
+
+  def test_SetValue(self):
+    config = '--foo=foo'
+    option = encoder.Option('foo', ['foo', 'bar'])
+    self.assertEqual(option.SetValue(config, 'bar'), '--foo=bar')
+
   def test_PatchConfig(self):
     config = '--foo=foo'
     option = encoder.Option('foo', ['foo', 'bar'])
@@ -53,6 +73,11 @@ class TestConfig(unittest.TestCase):
     config = '--foobar --foo'
     newconfig = option.RandomlyPatchConfig(config)
     self.assertEqual(newconfig, '--foobar --bar')
+
+  def test_IntegerOption(self):
+    option = encoder.IntegerOption('foo', 5, 6)
+    config = '--foo=5'
+    self.assertEqual(option.RandomlyPatchConfig(config), '--foo=6')
 
 
 class TestCodec(unittest.TestCase):
@@ -79,6 +104,7 @@ class TestCodec(unittest.TestCase):
     codec = DummyCodec()
     codec.BestEncoding(100, self.videofile).Execute().Store()
     self.assertIsNone(codec.BestEncoding(200, self.videofile).Score())
+
 
 class TestEncoder(unittest.TestCase):
   def test_CreateStoreFetch(self):
@@ -121,10 +147,10 @@ class TestVideofile(unittest.TestCase):
 
 class TestEncodingDiskCache(unittest.TestCase):
   def testInit(self):
-    cache = encoder.EncodingDiskCache(NameOnlyCodec())
+    cache = encoder.EncodingDiskCache(StorageOnlyCodec())
 
   def testStoreFetchEncoder(self):
-    codec = NameOnlyCodec()
+    codec = StorageOnlyCodec()
     cache = encoder.EncodingDiskCache(codec)
     my_encoder = encoder.Encoder(codec, "parameters")
     cache.StoreEncoder(my_encoder)
@@ -132,7 +158,7 @@ class TestEncodingDiskCache(unittest.TestCase):
     self.assertEquals(new_encoder_data, my_encoder.parameters)
 
   def testStoreFetchEncoding(self):
-    codec = NameOnlyCodec()
+    codec = StorageOnlyCodec()
     cache = encoder.EncodingDiskCache(codec)
     my_encoder = encoder.Encoder(codec, "parameters")
     cache.StoreEncoder(my_encoder)
