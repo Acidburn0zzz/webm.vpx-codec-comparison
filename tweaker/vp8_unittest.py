@@ -9,6 +9,7 @@ import vp8
 class TestVp8(unittest.TestCase):
   def test_Init(self):
     codec = vp8.Vp8Codec()
+    self.assertEqual(codec.name, 'vp8')
 
   def test_ScoreResult(self):
     codec = vp8.Vp8Codec()

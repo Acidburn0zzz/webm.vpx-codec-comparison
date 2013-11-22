@@ -1,9 +1,7 @@
 #!/usr/bin/python
 """Make sure the best encoding for a rate/file has a score.
 
-Usage: vp8tweaker [--cq] <rate> <videofile>
-
-This script consults the run database for the VP8 codec,
+This script consults the run database for the codec,
 picks the best encoding so far, and makes sure it's executed.
 This ensures that at least one executed encoding exists for this
 parameter set.
@@ -12,23 +10,19 @@ parameter set.
 import argparse
 import sys
 
-from vp8 import Vp8Codec
-from vp8_cq import Vp8CodecCqMode
-from encoder import Videofile
+import encoder
+import pick_codec
 
 def main():
   parser = argparse.ArgumentParser()
   parser.add_argument('rate')
   parser.add_argument('videofile')
-  parser.add_argument("--cq", action="store_true", dest="cq_mode")
+  parser.add_argument('--codec')
   args = parser.parse_args()
 
-  videofile = Videofile(args.videofile)
+  videofile = encoder.Videofile(args.videofile)
 
-  if args.cq_mode:
-    codec = Vp8CodecCqMode()
-  else:
-    codec = Vp8Codec()
+  codec = pick_codec.PickCodec(args.codec)
 
   bitrate = int(args.rate)
 
@@ -40,6 +34,7 @@ def main():
     bestsofar.Store()
   print "Best encoder is", bestsofar.encoder.Hashname(), \
       "score", bestsofar.Score()
+  return 0
 
 if __name__ == '__main__':
   sys.exit(main())

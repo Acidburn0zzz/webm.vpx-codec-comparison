@@ -1,1 +1,12 @@
+# Files and extensions that GIT should not bother mentioning.
+*.pyc
 *~
+# Directories not under GIT control
+/logs
+/video
+/mpeg_video
+/stats
+/tweaker/vp8
+/tweaker/h261
+/tweaker/h263
+/tweaker/mjpeg

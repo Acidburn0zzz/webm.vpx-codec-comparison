@@ -3,16 +3,25 @@
 # List the best MPEG settings for CQ mode encodings.
 #
 
-import mpeg_settings
-from encoder import Videofile
-from vp8_cq import Vp8CodecCqMode
+import argparse
+import sys
 
-def ListOne(file_stem, rate):
+import encoder
+import mpeg_settings
+
+import pick_codec
+
+def ListOne(codec, file_stem, rate, run_score):
   """Output one line describing the best encoding for this file."""
   file = '../mpeg_video/' + file_stem
-  videofile = Videofile(file)
-  codec = Vp8CodecCqMode()
+  videofile = encoder.Videofile(file)
   bestsofar = codec.BestEncoding(rate, videofile)
+  if not bestsofar.Score():
+    if run_score:
+      bestsofar.Execute()
+      bestsofar.Store()
+    else:
+      return (0, 0)
   cq = bestsofar.encoder.OptionValue('min-q')
   # Compute how many percent we are below the target bitrate.
   # Numbers far below the target indicate room for improvement.
@@ -24,18 +33,32 @@ def ListOne(file_stem, rate):
     file_stem, rate,\
     bestsofar.result['bitrate'], bestsofar.result['psnr'], \
     bitsleft, '%'
-  return bitsleft
+  return (1, bitsleft)
 
 
-def ListBest():
+def ListBest(codec, run_score):
   count = 0
   wasted = 0.0
+  overrun = 0
   for classname in mpeg_settings.files.keys():
     for file in mpeg_settings.files[classname]:
       for rate in mpeg_settings.rates[classname]:
-        count += 1
-        wasted += ListOne(file, rate)
+        (this_count, this_wasted) = ListOne(codec, file, rate, run_score)
+        count += this_count
+        wasted += this_wasted
+        if wasted < 0.0:
+          overrun += 1
   print "Average waste ", wasted / count, "%"
+  print "Number scored: %d, over target rate %d" % (count, overrun)
+
+def main():
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--codec', default = 'vp8_cq')
+  parser.add_argument('--score', action='store_true', default=False)
+  args = parser.parse_args()
+  codec = pick_codec.PickCodec(args.codec)
+  ListBest(codec, args.score)
+  return 0
 
 if __name__ == '__main__':
-  ListBest()
+  sys.exit(main())

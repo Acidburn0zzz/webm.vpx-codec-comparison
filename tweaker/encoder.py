@@ -129,13 +129,24 @@ class Videofile(object):
         raise Error("Unable to parse filename " + filename)
     self.basename = os.path.splitext(os.path.basename(filename))[0]
 
+  def MeasuredBitrate(self, encodedsize):
+    """Returns bitrate of an encoded file in kilobits per second.
+
+    Argument: Encoded file size in bytes.
+    """
+    # YUV is 8 bits per pixel for Y, 1/4 that for each of U and V.
+    framesize = self.width * self.height * 3 / 2
+    framecount = os.path.getsize(self.filename) / framesize
+    encodedframesize = encodedsize / framecount
+    return encodedframesize * self.framerate * 8 / 1000
 
 class Codec(object):
   """Abstract class representing a codec.
 
   Subclasses must define the name, options and start_encoder variables
   """
-  def __init__(self, cache=None):
+  def __init__(self, name, cache=None):
+    self.name = name
     if cache:
       self.cache = cache
     else:
@@ -159,6 +170,7 @@ class Codec(object):
     return config
 
   def RandomlyChangeConfig(self, parameters):
+    assert(len(self.options) >= 1)
     option_to_change = self.options[random.randint(0, len(self.options)-1)]
     config = option_to_change.RandomlyPatchConfig(parameters)
     return self.ConfigurationFixups(config)

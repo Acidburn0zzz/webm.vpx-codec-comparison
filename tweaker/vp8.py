@@ -9,33 +9,29 @@ It tells the generic codec the following:
 import os
 import subprocess
 
-from encoder import Codec
-from encoder import Encoder
-from encoder import Option
-from encoder import ChoiceOption
+import encoder
 
-class Vp8Codec(Codec):
-  def __init__(self):
-    self.name = 'vp8'
-    super(Vp8Codec, self).__init__()
+class Vp8Codec(encoder.Codec):
+  def __init__(self, name='vp8'):
+    super(Vp8Codec, self).__init__(name)
     self.extension = 'webm'
     self.options = [
-      Option('overshoot-pct', ['0', '15', '30', '45']),
-      Option('undershoot-pct', ['0', '25', '50', '75', '100']),
+      encoder.Option('overshoot-pct', ['0', '15', '30', '45']),
+      encoder.Option('undershoot-pct', ['0', '25', '50', '75', '100']),
       # CQ mode is not considered for end-usage at the moment.
-      Option('end-usage', ['cbr', 'vbr']),
+      encoder.Option('end-usage', ['cbr', 'vbr']),
       # End-usage cq doesn't really make sense unless we also set q to something
       # between min and max. This is being checked.
-      # Option('end-usage', ['cbr', 'vbr', 'cq']),
-      Option('end-usage', ['cbr', 'vbr']),
-      Option('min-q', ['0', '2', '4', '8', '16', '24']),
-      Option('max-q', ['32', '56', '63']),
-      Option('buf-sz', ['200', '500', '1000', '2000', '4000', '8000', '16000']),
-      Option('buf-initial-sz', ['200', '400', '800', '1000', '2000', '4000', '8000', '16000']),
-      Option('max-intra-rate', ['100', '200', '400', '600', '800', '1200']),
-      ChoiceOption(['good', 'best', 'rt']),
+      # encoder.Option('end-usage', ['cbr', 'vbr', 'cq']),
+      encoder.Option('end-usage', ['cbr', 'vbr']),
+      encoder.Option('min-q', ['0', '2', '4', '8', '16', '24']),
+      encoder.Option('max-q', ['32', '56', '63']),
+      encoder.Option('buf-sz', ['200', '500', '1000', '2000', '4000', '8000', '16000']),
+      encoder.Option('buf-initial-sz', ['200', '400', '800', '1000', '2000', '4000', '8000', '16000']),
+      encoder.Option('max-intra-rate', ['100', '200', '400', '600', '800', '1200']),
+      encoder.ChoiceOption(['good', 'best', 'rt']),
       ]
-    self.start_encoder = Encoder(self, """ --lag-in-frames=0 \
+    self.start_encoder = encoder.Encoder(self, """ --lag-in-frames=0 \
       --kf-min-dist=3000 \
       --kf-max-dist=3000 --cpu-used=0 --static-thresh=0 \
       --token-parts=1 --drop-frame=0 --end-usage=cbr --min-q=2 --max-q=56 \
@@ -44,6 +40,7 @@ class Vp8Codec(Codec):
       --resize-allowed=0 --drop-frame=0 --passes=1 --good --noise-sensitivity=0 """)
 
   def Execute(self, parameters, bitrate, videofile, workdir):
+    nullinput = open('/dev/null', 'r')
     commandline = ("../bin/vpxenc " + parameters
                    + ' --target-bitrate=' + str(bitrate)
                    + ' --fps=' + str(videofile.framerate) + '/1'
@@ -56,7 +53,7 @@ class Vp8Codec(Codec):
     with open('/dev/null', 'r') as nullinput:
       returncode = subprocess.call(commandline, shell=True, stdin=nullinput)
       if returncode:
-        raise Exception("Encode failed with returncode " + str(returncode))
+        raise Exception("Encode failed with returncode %d" % returncode)
     return self.Measure(bitrate, videofile, workdir)
 
   def Measure(self, bitrate, videofile, workdir):

@@ -9,15 +9,12 @@ import re
 import subprocess
 
 import encoder
-
 import vp8
-
 
 class Vp8CodecCqMode(vp8.Vp8Codec):
   def __init__(self):
-    super(Vp8CodecCqMode, self).__init__()
+    super(Vp8CodecCqMode, self).__init__('vp8-cq')
     # Set the parts that are different from the VP8 codec.
-    self.name = 'vp8-cq'
     self.options = [
       encoder.IntegerOption('min-q', 0, 63),
       encoder.ChoiceOption(['good', 'best', 'rt']),

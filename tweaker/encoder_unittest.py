@@ -8,8 +8,7 @@ import encoder
 
 class DummyCodec(encoder.Codec):
   def __init__(self):
-    super(DummyCodec, self).__init__(encoder.EncodingMemoryCache(self))
-    self.name = 'dummy'
+    super(DummyCodec, self).__init__('dummy', encoder.EncodingMemoryCache(self))
     self.extension = 'fake'
     self.options = [
       encoder.Option('score',  ['0', '5', '10']),
@@ -79,6 +78,12 @@ class TestConfig(unittest.TestCase):
     config = '--foo=5'
     self.assertEqual(option.RandomlyPatchConfig(config), '--foo=6')
 
+  def test_ChoiceOption(self):
+    config = '--foo'
+    option = encoder.ChoiceOption(['foo', 'bar'])
+    newconfig = option.RandomlyPatchConfig(config)
+    self.assertEqual(newconfig, '--bar')
+
 
 class TestCodec(unittest.TestCase):
   def setUp(self):
@@ -94,7 +99,6 @@ class TestCodec(unittest.TestCase):
     codec.BestEncoding(100, self.videofile).Store()
     encoding = codec.BestEncoding(100, self.videofile)
     self.assertEqual(encoding.videofile, self.videofile)
-
   def test_BestEncodingExecuteGivesScore(self):
     codec = DummyCodec()
     codec.BestEncoding(100, self.videofile).Execute().Store()

@@ -9,6 +9,7 @@ import vp8_cq
 class TestVp8Cq(unittest.TestCase):
   def test_Init(self):
     codec = vp8_cq.Vp8CodecCqMode()
+    self.assertEqual('vp8-cq', codec.name)
     # Verifying that the default config's value for min-q is still 32.
     # This is required for later tests to work properly.
     self.assertEqual('32', encoder.Option('min-q').GetValue(
