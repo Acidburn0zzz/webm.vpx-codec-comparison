@@ -1,0 +1,54 @@
+#!/usr/bin/python
+"""Tweaker for the VP8 codec.
+
+Usage: vp8tweaker [--loop] <rate> <videofile>
+
+This script consults the run database for the VP8 codec,
+picks the best encoding so far, generates the tweak set for it,
+finds the encoding with the highest likely score that hasn't been
+encoded, executes the encoding, and reports whether or not there
+was improvement.
+"""
+
+import argparse
+import sys
+
+import vp8
+import encoder
+
+def main():
+  parser = argparse.ArgumentParser()
+  parser.add_argument('rate')
+  parser.add_argument('videofile')
+  parser.add_argument("--loop", action="store_true", dest="loop")
+  args = parser.parse_args()
+
+  print "Loop is", args.loop
+
+  videofile = encoder.Videofile(args.videofile)
+
+  codec = vp8.Vp8Codec()
+  while True:
+    bestsofar = codec.BestEncoding(args.rate, videofile)
+    bestsofar.Recover()
+    print "Starting from", bestsofar.encoder.Hashname(), \
+           "score", bestsofar.Score()
+    if bestsofar.Score():
+      variants = bestsofar.SomeUntriedVariants()
+      next_encoding = variants.BestGuess()
+      if not next_encoding:
+        print "Ran out of variants to try"
+        return 1
+    else:
+      print "Best so far is unscored, trying it"
+      next_encoding = bestsofar
+    print "Trying encoder", next_encoding.encoder.Hashname()
+    next_encoding.Execute()
+    print "Score is", next_encoding.Score()
+    next_encoding.Store()
+    if not args.loop:
+      return 0
+
+if __name__ == '__main__':
+  sys.exit(main())
+
