@@ -67,5 +67,7 @@ class FfmpegCodec(encoder.Codec):
     score = result['psnr']
     if result['bitrate'] > int(target_bitrate):
       score -= (result['bitrate'] - int(target_bitrate)) * 0.1
+      if abs(score) < 0.01:
+        score = 0.01
     return score
 

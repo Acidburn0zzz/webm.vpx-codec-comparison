@@ -27,10 +27,14 @@ def main():
   encodings = codec.AllScoredEncodings(bitrate, videofile)
   encodings.encodings.sort(key=lambda foo: foo.Score())
   for encoding in encodings.encodings:
-    minq = encoding.encoder.OptionValue('min-q')
+    if args.cq_mode:
+      minq = encoding.encoder.OptionValue('fixed-q')
+    else:
+      minq = encoding.encoder.OptionValue('min-q')
     best = encoding.encoder.ChoiceValue(['good', 'best', 'rt'])
     print encoding.encoder.Hashname(), best, minq, encoding.Score(), \
         encoding.result
+    print encoding.encoder.OptionValues()
 
 if __name__ == '__main__':
   sys.exit(main())

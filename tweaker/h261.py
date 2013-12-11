@@ -59,11 +59,3 @@ class H261Codec(ffmpeg.FfmpegCodec):
     os.unlink(tempyuvfile)
     return result
 
-  def ScoreResult(self, target_bitrate, result):
-    if not result:
-      return None
-    score = result['psnr']
-    if result['bitrate'] > int(target_bitrate):
-      score -= (result['bitrate'] - int(target_bitrate)) * 0.1
-    return score
-

@@ -109,6 +109,9 @@ class TestCodec(unittest.TestCase):
     codec.BestEncoding(100, self.videofile).Execute().Store()
     self.assertIsNone(codec.BestEncoding(200, self.videofile).Score())
 
+  def test_DisplayHeading(self):
+    codec = DummyCodec()
+    self.assertEqual('score', codec.DisplayHeading())
 
 class TestEncoder(unittest.TestCase):
   def test_CreateStoreFetch(self):
@@ -118,6 +121,13 @@ class TestEncoder(unittest.TestCase):
     filename = my_encoder.Hashname()
     next_encoder = encoder.Encoder(codec, filename=filename)
     self.assertEqual(my_encoder.parameters, next_encoder.parameters)
+
+  def test_OptionValues(self):
+    codec = DummyCodec()
+    my_encoder = encoder.Encoder(codec, '--score=77')
+    self.assertEqual(repr(my_encoder.OptionValues()), "{'score': '77'}")
+    self.assertEqual(my_encoder.DisplayValues(), '77')
+
 
 class TestEncoding(unittest.TestCase):
   pass

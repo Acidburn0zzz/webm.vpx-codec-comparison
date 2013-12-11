@@ -59,8 +59,8 @@ def TweakAll():
   for classname in files.keys():
     for file in files[classname]:
       for rate in rates[classname]:
-        print "./vp8tweaker --cq", rate, \
-               "../mpeg_video/" + file
+        print "./vp8tweaker --codec=vp8_mpeg_1d --loop ", rate, \
+               "../mpeg_video/" + file + '&'
 
 
 if __name__ == '__main__':

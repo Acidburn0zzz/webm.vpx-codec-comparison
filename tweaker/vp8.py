@@ -86,6 +86,7 @@ class Vp8Codec(encoder.Codec):
     assert(type(target_bitrate) == type(0))
     if result['bitrate'] > target_bitrate:
       score -= (result['bitrate'] - target_bitrate) * 0.1
-      if score < 0.1:
-        score = 0.1
+      # Avoid accidentally-false scores.
+      if abs(score) < 0.01:
+        score = 0.01
     return score

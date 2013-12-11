@@ -19,7 +19,7 @@ if [ ! -d libvpx ]; then
 fi
 cd libvpx
 # Ensure we check out exactly a consistent version.
-git checkout master
+git checkout -f master
 git checkout c129203f7e5e20f5d67f92c27c65f7d5e362aa7a
 ./configure
 # There's something wrong in the make for libvpx at this version.
@@ -28,6 +28,11 @@ git checkout c129203f7e5e20f5d67f92c27c65f7d5e362aa7a
 make || echo "Something went wrong building libvpx, continuing"
 cp vpxenc ../bin/
 cp vpxdec ../bin/
+
+# Build a patched version of vpxenc
+patch -p1 < ../vp8_fixed_q.patch
+make
+cp vpxenc ../bin/vpxenc-mpeg
 cd ..
 
 # Build the x264 binary

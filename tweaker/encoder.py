@@ -74,7 +74,10 @@ class ChoiceOption(Option):
   One example is the --good, --best option to vpxenc.
   """
   def __init__(self, flags):
-     self.values = frozenset(flags)
+    # The name is just for output, it does not affect the behaviour
+    # of the program.
+    self.name = '/'.join(flags)
+    self.values = frozenset(flags)
 
   def OptionString(self, value):
     return '--%s' % value
@@ -176,6 +179,11 @@ class Codec(object):
     return self.ConfigurationFixups(config)
 
   def ScoreResult(self, bitrate, result):
+    """Returns the score of a particular encoding result.
+
+    The score is a number that can be positive or negative, but it MUST NOT
+    be zero, because the Score() is also used as a boolean to check if the
+    result is present or not."""
     raise NotImplementedError
 
   def SpeedGroup(self, bitrate):
@@ -189,6 +197,11 @@ class Codec(object):
   def SuggestTweak(self, encoding):
     """Suggest a tweaked encoder based on an encoding result."""
     return None
+
+  def DisplayHeading(self):
+    """A short string suitable for displaying on top of a column
+    showing parameter values for a given encoder."""
+    return ' '.join([option.name for option in self.options])
 
 
 class Encoder(object):
@@ -242,6 +255,21 @@ class Encoder(object):
     except Error:
       return '?'
 
+  def OptionValues(self):
+    """Returns a dictionary of all current option values."""
+    values = {}
+    for option in self.codec.options:
+      values[option.name] = option.GetValue(self.parameters)
+    return values
+
+  def DisplayValues(self):
+    """Returns the values of the tweakable parameters.
+
+    This is intended to be displayed in a column under codec.DisplayHeading,
+    so it is important that sequence here is the same as for DisplayHeading.
+    """
+    return ' '.join([option.GetValue(self.parameters)
+                     for option in self.codec.options])
 
 class Encoding(object):
   """The encoding represents the result of applying a specific encoder

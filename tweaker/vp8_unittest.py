@@ -17,9 +17,9 @@ class TestVp8(unittest.TestCase):
     self.assertEqual(10.0, codec.ScoreResult(100, result))
     self.assertEqual(10.0, codec.ScoreResult(1000, result))
     # Score is reduced by 0.1 per kbps overrun.
-    self.assertEqual(10.0 - 0.1, codec.ScoreResult(99, result))
+    self.assertAlmostEqual(10.0 - 0.1, codec.ScoreResult(99, result))
     # Score floors at 0.1 for very large overruns.
-    self.assertEqual(0.1, codec.ScoreResult(1, result))
+    self.assertAlmostEqual(0.1, codec.ScoreResult(1, result))
     self.assertFalse(codec.ScoreResult(100, None))
 
 if __name__ == '__main__':

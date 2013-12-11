@@ -9,3 +9,4 @@ WORKDIR=$(dirname $0)
 $WORKDIR/encoder_unittest.py
 $WORKDIR/vp8_unittest.py
 $WORKDIR/vp8_cq_unittest.py
+$WORKDIR/vp8_mpeg_1d_unittest.py
