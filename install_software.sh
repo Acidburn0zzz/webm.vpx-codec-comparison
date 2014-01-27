@@ -33,7 +33,14 @@ cp vpxdec ../bin/
 patch -p1 < ../vp8_fixed_q.patch
 make
 cp vpxenc ../bin/vpxenc-mpeg
+
+# Build a patched version of vpxdec that dumps decode data
+patch -p1 < ../enable-decodestats.patch
+make
+cp vpxdec ../bin/vpxdec-dumper
+
 cd ..
+
 
 # Build the x264 binary
 if [ ! -d x264 ]; then

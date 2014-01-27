@@ -1,0 +1,32 @@
+#!/bin/sh
+#
+# Dump stats from a VP8 encoded file.
+# The VP8 file is a Matroska file; data is extracted using vpxdec with a patch
+# to write to decodestats.stt for each frame.
+#
+set -e
+
+FILE=$1
+DIR=$PWD
+BINDIR=$(dirname $(realpath $0))
+
+if [ ! -f $DIR/$FILE ]; then
+  echo "No such file: $DIR/$FILE"
+  exit 1
+fi
+
+WORKDIR=$(mktemp -d)
+
+cd $WORKDIR
+
+# Dump info to decodestats.stt
+$BINDIR/vpxdec-dumper $DIR/$FILE -o /dev/null
+mkvinfo -v --size $DIR/$FILE > mkvinfo.log
+grep 'Frame with' mkvinfo.log > mkvinfo.frames
+
+paste decodestats.stt mkvinfo.frames
+
+rm -r $WORKDIR
+
+
+

@@ -1,0 +1,13 @@
+diff --git a/vp8/decoder/decodframe.c b/vp8/decoder/decodframe.c
+index 4632118..cb000d0 100644
+--- a/vp8/decoder/decodframe.c
++++ b/vp8/decoder/decodframe.c
+@@ -1278,7 +1278,7 @@ int vp8_decode_frame(VP8D_COMP *pbi)
+         pc->refresh_last_frame = 1;
+ #endif
+ 
+-    if (0)
++    if (1)
+     {
+         FILE *z = fopen("decodestats.stt", "a");
+         fprintf(z, "%6d F:%d,G:%d,A:%d,L:%d,Q:%d\n",
