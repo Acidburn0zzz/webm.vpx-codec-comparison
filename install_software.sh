@@ -47,7 +47,9 @@ if [ ! -d x264 ]; then
   git clone git://git.videolan.org/x264.git
 fi
 cd x264
-git checkout d967c09
+# This version of x264 is chosen because the next step requires yasm 1.2
+# Was: git checkout d967c09
+git checkout 8a9608
 ./configure
 make x264
 cp x264 ../bin/
